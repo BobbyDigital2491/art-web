@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import Sidebar from '@/app/components/Sidebar';
+import Sidebar from '@/components/Sidebar';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
