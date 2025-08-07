@@ -42,7 +42,7 @@ export default function CreateProject() {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Project</h1>
 
         {/* Flex Grid */}
-        <div className="flex flex-col md:flex-row md:flex-wrap gap-6">
+        <div className="flex h-96 flex-col md:flex-row md:flex-wrap gap-6">
           {projectTypes.map((project) => (
             <div
               key={project.type}

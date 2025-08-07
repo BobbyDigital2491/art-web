@@ -9,7 +9,8 @@ import { HiX } from 'react-icons/hi';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { autoRefreshToken: false, detectSessionInUrl: false } }
 );
 
 interface Project {
@@ -48,6 +49,8 @@ export default function Home() {
         }
 
         if (user) {
+          console.log('Home: userId:', user.id, 'cookies:', document.cookie);
+
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('display_name, profile_picture')
@@ -60,21 +63,14 @@ export default function Home() {
             setUserData(profileData);
           }
 
-          // Check if project_type column exists
-          const hasProjectType = await supabase
-            .rpc('column_exists', { table_name: 'ar_assets', column_name: 'project_type' })
-            .then(({ data }) => data);
-
           // Fetch user projects from ar_assets
-          const selectColumns = `id, project_name, description, target_path, media_path, updated_at${
-            hasProjectType ? ', project_type' : ''
-          }`;
+          const selectColumns = 'id, project_name, description, target_path, media_path, updated_at, project_type';
           const { data: projectsData, error: projectsError } = await supabase
             .from('ar_assets')
             .select(selectColumns)
             .eq('user_id', user.id);
-          console.log('ar_assets query:', selectColumns);
-          console.log('ar_assets result:', projectsData, 'error:', projectsError);
+          console.log('Home: ar_assets query:', selectColumns);
+          console.log('Home: ar_assets result:', JSON.stringify(projectsData, null, 2), 'error:', JSON.stringify(projectsError, null, 2));
 
           if (projectsError) {
             console.error('Error fetching projects:', projectsError.message, projectsError.details, projectsError.hint);
@@ -83,7 +79,7 @@ export default function Home() {
             const { data: storageData, error: storageError } = await supabase.storage
               .from('ar-assets')
               .list('', { limit: 10 });
-            console.log('storage.objects result:', storageData, 'error:', storageError);
+            console.log('Home: storage.objects result:', JSON.stringify(storageData, null, 2), 'error:', JSON.stringify(storageError, null, 2));
             if (storageError) {
               console.error('Error fetching storage objects:', storageError.message);
               setError('Failed to fetch storage objects');
@@ -99,7 +95,7 @@ export default function Home() {
                     'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
                   media_path: undefined,
                   updated_at: obj.updated_at || new Date().toISOString(),
-                  project_type: hasProjectType ? 'image_target' : undefined,
+                  project_type: undefined,
                 }));
               setProjects(storageProjects);
             }
@@ -115,7 +111,7 @@ export default function Home() {
                   'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
                 media_path: p.media_path,
                 updated_at: p.updated_at || new Date().toISOString(),
-                project_type: hasProjectType ? p.project_type : undefined,
+                project_type: p.project_type,
               }));
             setProjects(validProjects);
           } else {
