@@ -7,18 +7,9 @@ import * as THREE from 'three';
 import HierarchyPanel from './HierarchyPanel';
 import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi';
 import { FaArrowsAlt, FaSync, FaExpand } from 'react-icons/fa';
+import { Project } from '../types';
 
 // Interfaces
-interface Project {
-  id: string;
-  project_name: string;
-  description: string | null;
-  target_path: string;
-  media_path: string | null;
-  status: string;
-  user_id: string;
-}
-
 interface Transform {
   position: [number, number, number];
   rotation: [number, number, number];
@@ -58,21 +49,9 @@ function AssetMesh({ targetPath, position, rotation, scale, onTransformChange }:
       onUpdate={() => {
         if (meshRef.current) {
           onTransformChange({
-            position: [
-              meshRef.current.position.x,
-              meshRef.current.position.y,
-              meshRef.current.position.z,
-            ] as [number, number, number],
-            rotation: [
-              meshRef.current.rotation.x,
-              meshRef.current.rotation.y,
-              meshRef.current.rotation.z,
-            ] as [number, number, number],
-            scale: [
-              meshRef.current.scale.x,
-              meshRef.current.scale.y,
-              meshRef.current.scale.z,
-            ] as [number, number, number],
+            position: meshRef.current.position.toArray() as [number, number, number],
+            rotation: meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number],
+            scale: meshRef.current.scale.toArray() as [number, number, number],
           });
         }
       }}
@@ -97,7 +76,7 @@ export default function SceneEditor({ project }: SceneEditorProps) {
   });
   const [history, setHistory] = useState<{ transform: Transform }[]>([{ transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const transformControlsRef = useRef<typeof TransformControls<THREE.PerspectiveCamera> | null>(null);
+  const transformControlsRef = useRef<TransformControls<THREE.PerspectiveCamera> | null>(null);
 
   console.log('SceneEditor: project:', JSON.stringify(project, null, 2));
   console.log('SceneEditor: selectedProject:', JSON.stringify(selectedProject, null, 2));
