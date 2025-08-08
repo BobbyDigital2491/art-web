@@ -1,14 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
 import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { Suspense } from 'react';
 import Image from 'next/image';
+import Sidebar from '../components/Sidebar';
 
 // Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { autoRefreshToken: false, detectSessionInUrl: false } }
 );
 
 // TypeScript interface for profile data
@@ -18,21 +22,24 @@ interface Profile {
   profile_picture: string | null;
 }
 
-export default function Profile() {
+function ProfileContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const router = useRouter();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Fetch user profile on mount
   useEffect(() => {
     const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.log('Profile: No user, redirecting to /login');
+        router.push(`/login?next=/profile${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
         return;
       }
       const { data, error } = await supabase
@@ -51,7 +58,7 @@ export default function Profile() {
       }
     };
     fetchProfile();
-  }, [router]);
+  }, [router, searchParams]);
 
   // Handle file upload with validation
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,101 +131,115 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <a href="/" className="text-2xl font-bold text-blue-600">ARt Emerged</a>
-          <button
-            onClick={handleLogout}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar onToggle={setSidebarCollapsed} />
 
-      {/* Profile Card */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white shadow-lg rounded-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Your Profile</h1>
-          <div className="flex flex-col items-center mb-8">
-            {profilePictureUrl ? (
-              <Image
-                src={profilePictureUrl}
-                alt="Profile Picture"
-                width={120}
-                height={120}
-                className="rounded-full object-cover border-2 border-blue-600"
-              />
-            ) : (
-              <Image
-                src="https://via.placeholder.com/120?text=Avatar"
-                alt="Default Avatar"
-                width={120}
-                height={120}
-                className="rounded-full object-cover border-2 border-gray-300"
-              />
-            )}
-            <h2 className="mt-4 text-xl font-semibold text-gray-700">
-              {displayName || 'Set your display name'}
-            </h2>
-            <p className="mt-2 text-gray-600 text-center">
-              {bio || 'Add a bio to tell others about yourself.'}
-            </p>
+      {/* Main Content */}
+      <div className={`flex-1 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'} transition-all duration-300`}>
+        {/* Header */}
+        <header className="bg-black text-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <a href="/" className="text-2xl font-bold text-yellow-400">ARt Emerged</a>
+            <button
+              onClick={handleLogout}
+              className="rounded-lg bg-yellow-700 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+            >
+              Logout
+            </button>
           </div>
-          <form onSubmit={handleUpdate} className="space-y-6">
-            <div>
-              <label htmlFor="display-name" className="block text-sm font-medium text-gray-700">
-                Display Name
-              </label>
-              <input
-                type="text"
-                id="display-name"
-                className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-blue-600 transition"
-                placeholder="Enter display name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
+        </header>
+
+        {/* Profile Card */}
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white shadow-lg rounded-lg p-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Your Profile</h1>
+            <div className="flex flex-col items-center mb-8">
+              {profilePictureUrl ? (
+                <Image
+                  src={profilePictureUrl}
+                  alt="Profile Picture"
+                  width={120}
+                  height={120}
+                  className="rounded-full object-cover border-2 border-yellow-700"
+                />
+              ) : (
+                <Image
+                  src="https://via.placeholder.com/120?text=Avatar"
+                  alt="Default Avatar"
+                  width={120}
+                  height={120}
+                  className="rounded-full object-cover border-2 border-gray-300"
+                />
+              )}
+              <h2 className="mt-4 text-xl font-semibold text-gray-700">
+                {displayName || 'Set your display name'}
+              </h2>
+              <p className="mt-2 text-gray-600 text-center">
+                {bio || 'Add a bio to tell others about yourself.'}
+              </p>
             </div>
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-blue-600 transition"
-                placeholder="Tell us about yourself"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={4}
-              />
-            </div>
-            <div>
-              <label htmlFor="profile-picture" className="block text-sm font-medium text-gray-700">
-                Profile Picture
-              </label>
-              <input
-                type="file"
-                id="profile-picture"
-                accept="image/*"
-                className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-blue-600 transition"
-                onChange={handleFileChange}
-              />
-            </div>
-            <div className="flex justify-center">
-              <button
-                type="submit"
-                className="rounded-lg bg-blue-600 px-6 py-2 text-base font-semibold text-white shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Save Profile
-              </button>
-            </div>
-          </form>
-          {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
-          {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
-        </div>
-      </main>
+            <form onSubmit={handleUpdate} className="space-y-6">
+              <div>
+                <label htmlFor="display-name" className="block text-sm font-medium text-gray-700">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  id="display-name"
+                  className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-yellow-700 transition"
+                  placeholder="Enter display name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                  Bio
+                </label>
+                <textarea
+                  id="bio"
+                  className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-yellow-700 transition"
+                  placeholder="Tell us about yourself"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={4}
+                />
+              </div>
+              <div>
+                <label htmlFor="profile-picture" className="block text-sm font-medium text-gray-700">
+                  Profile Picture
+                </label>
+                <input
+                  type="file"
+                  id="profile-picture"
+                  accept="image/*"
+                  className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-yellow-700 transition"
+                  onChange={handleFileChange}
+                />
+              </div>
+              <div className="flex justify-center">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-yellow-700 px-6 py-2 text-base font-semibold text-white shadow-md hover:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </form>
+            {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
+            {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+          </div>
+        </main>
+      </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-100">Loading...</div>}>
+      <ProfileContent />
+    </Suspense>
   );
 }

@@ -24,9 +24,9 @@ const nextConfig = {
 
     return config;
   },
-  // Enable image optimization for Supabase-hosted assets
+  // Enable image optimization for Supabase-hosted assets and placeholder
   images: {
-    domains: ['your-supabase-url.supabase.co'],
+    domains: ['yffzwfxgwqjlxumxleeb.supabase.co', 'via.placeholder.com'],
     formats: ['image/avif', 'image/webp'],
   },
   // Ensure ES modules are handled correctly
