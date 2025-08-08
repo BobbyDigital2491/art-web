@@ -1,8 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Project } from '../../../../types';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Project } from '@/types';
+import Image from 'next/image';
 
 interface HierarchyPanelProps {
   selectedProject: Project | null;
@@ -10,53 +11,68 @@ interface HierarchyPanelProps {
   selectedProjectId: string | null;
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yffzwfxgwqjlxumxleeb.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key'
-);
-
 export default function HierarchyPanel({ selectedProject, onSelectAsset, selectedProjectId }: HierarchyPanelProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<boolean>(false);
+  const supabase = createClientComponentClient();
 
-  // Check if media_path is an image (png, jpg, jpeg, gif)
+  // Check if target_path is an image (png, jpg, jpeg, webp)
   const isImage = (path: string | null): boolean => {
     if (!path) return false;
     const ext = path.toLowerCase().split('.').pop();
-    const isImageResult = ['png', 'jpg', 'jpeg', 'gif'].includes(ext || '');
-    console.log('HierarchyPanel: media_path:', path, 'isImage:', isImageResult);
+    const isImageResult = ['png', 'jpg', 'jpeg', 'webp'].includes(ext || '');
+    console.log('HierarchyPanel: target_path:', path, 'isImage:', isImageResult);
     return isImageResult;
   };
 
-  // Fetch signed URL for media_path
+  // Normalize target_path by removing Supabase URL prefix
+  const normalizePath = (path: string | null | undefined): string | null => {
+    if (!path) return null;
+    const prefix = 'https://yffzwfxgwqjlxumxleeb.supabase.co/storage/v1/object/public/ar-assets/';
+    if (path.startsWith(prefix)) {
+      const normalized = path.replace(prefix, '');
+      console.log('HierarchyPanel: Normalized target_path:', path, 'to:', normalized);
+      return normalized;
+    }
+    console.log('HierarchyPanel: target_path already normalized:', path);
+    return path;
+  };
+
+  // Fetch signed URL for target_path
   useEffect(() => {
     async function fetchSignedUrl() {
-      if (selectedProject?.media_path && isImage(selectedProject.media_path)) {
+      const targetPath = normalizePath(selectedProject?.target_path);
+      if (targetPath && isImage(targetPath)) {
         try {
           const { data, error } = await supabase.storage
             .from('ar-assets')
-            .createSignedUrl(selectedProject.media_path, 60);
+            .createSignedUrl(targetPath, 60);
           if (error) {
-            console.error('HierarchyPanel: Signed URL error:', error.message);
-            setSignedUrl(null);
+            console.error('HierarchyPanel: Failed to get signed URL for', targetPath, ':', error.message);
+            setSignedUrl('/fallback-image.png');
+            setImageError(true);
           } else {
-            console.log('HierarchyPanel: Signed URL:', data.signedUrl);
+            console.log('HierarchyPanel: Signed URL for', targetPath, ':', data.signedUrl);
             setSignedUrl(data.signedUrl);
+            setImageError(false);
           }
         } catch (err) {
-          console.error('HierarchyPanel: Signed URL fetch error:', err);
-          setSignedUrl(null);
+          console.error('HierarchyPanel: Error fetching signed URL for', targetPath, ':', err);
+          setSignedUrl('/fallback-image.png');
+          setImageError(true);
         }
       } else {
-        console.log('HierarchyPanel: No valid media_path or not an image');
-        setSignedUrl(null);
+        console.log('HierarchyPanel: No valid target_path or not an image for', selectedProject?.id || 'no project');
+        setSignedUrl('/fallback-image.png');
+        setImageError(true);
       }
     }
     fetchSignedUrl();
-  }, [selectedProject?.media_path]);
+  }, [selectedProject?.target_path]);
 
   return (
-    <div className="absolute top-4 left-4 bg-white shadow-lg rounded-lg z-10 w-48 sm:w-36 md:w-48 max-h-[calc(100vh-2rem)] overflow-y-auto">
-      <div className="p-2">
+    <div className="absolute top-4 left-4 bg-white shadow-lg rounded-lg z-10 w-48 md:w-64 max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div className="p-4">
         <h2 className="text-sm font-semibold text-gray-800 mb-2">Selected Asset</h2>
         {selectedProject ? (
           <div
@@ -65,21 +81,34 @@ export default function HierarchyPanel({ selectedProject, onSelectAsset, selecte
             }`}
             onClick={() => onSelectAsset(selectedProject)}
           >
-            {selectedProject.media_path && isImage(selectedProject.media_path) && signedUrl ? (
-              <img
+            {selectedProject.target_path && isImage(selectedProject.target_path) && signedUrl && !imageError ? (
+              <Image
                 src={signedUrl}
                 alt={selectedProject.project_name}
-                className="w-10 h-10 object-cover rounded border border-red-500"
-                onError={(e) => {
-                  console.error('HierarchyPanel: Image load error for', signedUrl, 'falling back to /fallback-image.png');
-                  e.currentTarget.src = '/fallback-image.png';
+                width={50}
+                height={50}
+                className="mr-2 border-2 border-blue-500 rounded object-cover"
+                unoptimized
+                onError={() => {
+                  console.error('HierarchyPanel: Image load error for', selectedProject.target_path);
+                  setSignedUrl('/fallback-image.png');
+                  setImageError(true);
                 }}
-                onLoad={() => console.log('HierarchyPanel: Image loaded successfully for', signedUrl)}
+                onLoad={() => {
+                  console.log('HierarchyPanel: Image loaded successfully for', selectedProject.target_path);
+                  setImageError(false);
+                }}
               />
             ) : (
-              <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
-                <span className="text-xs text-gray-500">No Image</span>
-              </div>
+              <Image
+                src="/fallback-image.png"
+                alt={selectedProject.project_name}
+                width={50}
+                height={50}
+                className="mr-2 border-2 border-red-500 rounded object-cover"
+                unoptimized
+                onLoad={() => console.log('HierarchyPanel: Fallback image loaded for', selectedProject.id)}
+              />
             )}
             <span className="text-xs truncate">{selectedProject.project_name}</span>
           </div>

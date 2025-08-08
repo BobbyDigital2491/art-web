@@ -8,7 +8,7 @@ import HierarchyPanel from './HierarchyPanel';
 import { OrbitControls } from './OrbitControls';
 import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi';
 import { FaArrowsAlt, FaSync, FaExpand } from 'react-icons/fa';
-import { Project } from '../../../../types';
+import { Project } from '@/types';
 
 // Interfaces
 interface Transform {
@@ -112,7 +112,11 @@ export default function SceneEditor({ project }: SceneEditorProps) {
   };
 
   const handleResetTransforms = () => {
-    const resetTransform = { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+    const resetTransform: Transform = {
+      position: [0, 0, 0] as [number, number, number],
+      rotation: [0, 0, 0] as [number, number, number],
+      scale: [1, 1, 1] as [number, number, number],
+    };
     setTransforms(resetTransform);
     setHistory((prev) => [...prev.slice(0, historyIndex + 1), { transform: resetTransform }]);
     setHistoryIndex((prev) => prev + 1);
@@ -134,7 +138,7 @@ export default function SceneEditor({ project }: SceneEditorProps) {
 
   const handleNumericInput = (type: 'position' | 'rotation' | 'scale', axis: 'x' | 'y' | 'z', value: number) => {
     setTransforms((prev) => {
-      const newTransform = { ...prev };
+      const newTransform: Transform = { ...prev };
       if (type === 'position') {
         newTransform.position = [...prev.position] as [number, number, number];
         newTransform.position[['x', 'y', 'z'].indexOf(axis)] = value;
