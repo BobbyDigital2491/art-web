@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Project } from '../types';
+import { Project } from '../../../../types';
 
 interface HierarchyPanelProps {
   selectedProject: Project | null;

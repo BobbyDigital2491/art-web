@@ -2,12 +2,13 @@
 'use client';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, TransformControls, useTexture } from '@react-three/drei';
+import { TransformControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import HierarchyPanel from './HierarchyPanel';
+import { OrbitControls } from './OrbitControls';
 import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi';
 import { FaArrowsAlt, FaSync, FaExpand } from 'react-icons/fa';
-import { Project } from '../types';
+import { Project } from '../../../../types';
 
 // Interfaces
 interface Transform {
@@ -26,6 +27,19 @@ interface AssetMeshProps {
   rotation: [number, number, number];
   scale: [number, number, number];
   onTransformChange: (transform: Transform) => void;
+}
+
+// Type assertion function for tuples
+function toTransformTuple(
+  position: THREE.Vector3,
+  rotation: THREE.Euler,
+  scale: THREE.Vector3
+): Transform {
+  return {
+    position: [position.x, position.y, position.z] as [number, number, number],
+    rotation: [rotation.x, rotation.y, rotation.z] as [number, number, number],
+    scale: [scale.x, scale.y, scale.z] as [number, number, number],
+  };
 }
 
 // AssetMesh Component
@@ -48,11 +62,11 @@ function AssetMesh({ targetPath, position, rotation, scale, onTransformChange }:
       ref={meshRef}
       onUpdate={() => {
         if (meshRef.current) {
-          onTransformChange({
-            position: meshRef.current.position.toArray() as [number, number, number],
-            rotation: meshRef.current.rotation.toArray().slice(0, 3) as [number, number, number],
-            scale: meshRef.current.scale.toArray() as [number, number, number],
-          });
+          onTransformChange(toTransformTuple(
+            meshRef.current.position,
+            meshRef.current.rotation,
+            meshRef.current.scale
+          ));
         }
       }}
     >
@@ -76,7 +90,7 @@ export default function SceneEditor({ project }: SceneEditorProps) {
   });
   const [history, setHistory] = useState<{ transform: Transform }[]>([{ transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const transformControlsRef = useRef<TransformControls<THREE.PerspectiveCamera> | null>(null);
+  const transformControlsRef = useRef<{ axis: string | null; setSpace: (space: string) => void; setTranslationSnap: (snap: number | null) => void; setMode: (mode: string) => void; } | null>(null);
 
   console.log('SceneEditor: project:', JSON.stringify(project, null, 2));
   console.log('SceneEditor: selectedProject:', JSON.stringify(selectedProject, null, 2));

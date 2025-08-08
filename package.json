@@ -15,11 +15,9 @@
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.53.0",
     "@techstark/opencv-js": "^4.11.0-release.1",
-    "glslify-loader": "^2.0.0",
     "next": "^15.4.5",
     "opencv.js": "^1.2.1",
     "qrcode": "^1.5.4",
-    "raw-loader": "^4.0.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-dropzone": "^14.3.8",
@@ -37,6 +35,8 @@
     "@types/three": "^0.179.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
+    "glslify-loader": "^2.0.0",
+    "raw-loader": "^4.0.2",
     "tailwindcss": "^4.1.11",
     "typescript": "^5"
   }
