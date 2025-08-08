@@ -2,15 +2,16 @@
 'use client';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { Suspense } from 'react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const SplitScreenLogin = () => {
+function SplitScreenLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +19,18 @@ const SplitScreenLogin = () => {
   const [loading, setLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next') || '/';
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        router.push(next);
+      }
+    }
+    checkAuth();
+  }, [router, next]);
 
   useEffect(() => {
     if (success || error) {
@@ -45,7 +58,7 @@ const SplitScreenLogin = () => {
       setError(error.message);
     } else {
       setSuccess('Successful');
-      setTimeout(() => router.push('/'), 1000);
+      setTimeout(() => router.push(next), 1000);
     }
   };
 
@@ -56,7 +69,7 @@ const SplitScreenLogin = () => {
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}${next}` },
     });
 
     setLoading(false);
@@ -194,6 +207,12 @@ const SplitScreenLogin = () => {
       </div>
     </div>
   );
-};
+}
 
-export default SplitScreenLogin;
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-100">Loading...</div>}>
+      <SplitScreenLogin />
+    </Suspense>
+  );
+}

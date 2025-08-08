@@ -3,6 +3,8 @@
 'use client';
 import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Link from 'next/link';
 import { HiX } from 'react-icons/hi';
@@ -23,7 +25,9 @@ interface Project {
   project_type?: string;
 }
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [userData, setUserData] = useState<{ display_name: string; profile_picture: string } | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<{ createdProjects: number; storageUsed: number; totalUploads: number }>({
@@ -39,107 +43,105 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch user data
+        // Check authentication
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) {
-          console.error('Error fetching user:', userError.message);
-          setError('Failed to authenticate user');
-          setLoading(false);
+        if (userError || !user) {
+          console.log('Home: No user, redirecting to /login');
+          router.push(`/login?next=/${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
           return;
         }
 
-        if (user) {
-          console.log('Home: userId:', user.id, 'cookies:', document.cookie);
+        console.log('Home: userId:', user.id, 'cookies:', document.cookie);
 
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('display_name, profile_picture')
-            .eq('id', user.id)
-            .single();
-          if (profileError) {
-            console.error('Error fetching profile:', profileError.message);
-            setError('Failed to fetch profile data');
-          } else {
-            setUserData(profileData);
-          }
+        // Fetch user data
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('display_name, profile_picture')
+          .eq('id', user.id)
+          .single();
+        if (profileError) {
+          console.error('Error fetching profile:', profileError.message);
+          setError('Failed to fetch profile data');
+        } else {
+          setUserData(profileData);
+        }
 
-          // Fetch user projects from ar_assets
-          const selectColumns = 'id, project_name, description, target_path, media_path, updated_at, project_type';
-          const { data: projectsData, error: projectsError } = await supabase
-            .from('ar_assets')
-            .select(selectColumns)
-            .eq('user_id', user.id);
-          console.log('Home: ar_assets query:', selectColumns);
-          console.log('Home: ar_assets result:', JSON.stringify(projectsData, null, 2), 'error:', JSON.stringify(projectsError, null, 2));
+        // Fetch user projects from ar_assets
+        const selectColumns = 'id, project_name, description, target_path, media_path, updated_at, project_type';
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('ar_assets')
+          .select(selectColumns)
+          .eq('user_id', user.id);
+        console.log('Home: ar_assets query:', selectColumns);
+        console.log('Home: ar_assets result:', JSON.stringify(projectsData, null, 2), 'error:', JSON.stringify(projectsError, null, 2));
 
-          if (projectsError) {
-            console.error('Error fetching projects:', projectsError.message, projectsError.details, projectsError.hint);
-            setError('Failed to fetch projects: ' + projectsError.message);
-            // Fallback to storage.objects
-            const { data: storageData, error: storageError } = await supabase.storage
-              .from('ar-assets')
-              .list('', { limit: 10 });
-            console.log('Home: storage.objects result:', JSON.stringify(storageData, null, 2), 'error:', JSON.stringify(storageError, null, 2));
-            if (storageError) {
-              console.error('Error fetching storage objects:', storageError.message);
-              setError('Failed to fetch storage objects');
-            } else {
-              const storageProjects: Project[] = storageData
-                .filter((obj) => obj.name && obj.id)
-                .map((obj) => ({
-                  id: obj.id || obj.name,
-                  project_name: obj.name || 'Unnamed Project',
-                  description: 'No description available',
-                  target_path:
-                    supabase.storage.from('ar-assets').getPublicUrl(obj.name).data.publicUrl ||
-                    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-                  media_path: undefined,
-                  updated_at: obj.updated_at || new Date().toISOString(),
-                  project_type: undefined,
-                }));
-              setProjects(storageProjects);
-            }
-          } else if (projectsData && projectsData.length > 0) {
-            const validProjects: Project[] = projectsData
-              .filter((p: any) => p.id && p.project_name)
-              .map((p: any) => ({
-                id: p.id,
-                project_name: p.project_name,
-                description: p.description || 'No description',
-                target_path:
-                  p.target_path ||
-                  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-                media_path: p.media_path,
-                updated_at: p.updated_at || new Date().toISOString(),
-                project_type: p.project_type,
-              }));
-            setProjects(validProjects);
-          } else {
-            setProjects([]);
-            setError('No projects found in ar_assets');
-          }
-
-          // Fetch stats
-          const { count: projectCount } = await supabase
-            .from('ar_assets')
-            .select('id', { count: 'exact' })
-            .eq('user_id', user.id);
+        if (projectsError) {
+          console.error('Error fetching projects:', projectsError.message, projectsError.details, projectsError.hint);
+          setError('Failed to fetch projects: ' + projectsError.message);
+          // Fallback to storage.objects
           const { data: storageData, error: storageError } = await supabase.storage
             .from('ar-assets')
-            .list('', { limit: 100 });
-          const storageUsed = storageError
-            ? 0
-            : storageData.reduce((sum, obj) => sum + (obj.metadata?.size || 0), 0);
-          const { count: uploadCount } = await supabase
-            .from('storage_upload_logs')
-            .select('id', { count: 'exact' })
-            .eq('user_id', user.id);
-          setStats({
-            createdProjects: projectCount || 0,
-            storageUsed: storageUsed / 1024 / 1024, // Convert to MB
-            totalUploads: uploadCount || 0,
-          });
+            .list('', { limit: 10 });
+          console.log('Home: storage.objects result:', JSON.stringify(storageData, null, 2), 'error:', JSON.stringify(storageError, null, 2));
+          if (storageError) {
+            console.error('Error fetching storage objects:', storageError.message);
+            setError('Failed to fetch storage objects');
+          } else {
+            const storageProjects: Project[] = storageData
+              .filter((obj) => obj.name && obj.id)
+              .map((obj) => ({
+                id: obj.id || obj.name,
+                project_name: obj.name || 'Unnamed Project',
+                description: 'No description available',
+                target_path:
+                  supabase.storage.from('ar-assets').getPublicUrl(obj.name).data.publicUrl ||
+                  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+                media_path: undefined,
+                updated_at: obj.updated_at || new Date().toISOString(),
+                project_type: undefined,
+              }));
+            setProjects(storageProjects);
+          }
+        } else if (projectsData && projectsData.length > 0) {
+          const validProjects: Project[] = projectsData
+            .filter((p: any) => p.id && p.project_name)
+            .map((p: any) => ({
+              id: p.id,
+              project_name: p.project_name,
+              description: p.description || 'No description',
+              target_path:
+                p.target_path ||
+                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+              media_path: p.media_path,
+              updated_at: p.updated_at || new Date().toISOString(),
+              project_type: p.project_type,
+            }));
+          setProjects(validProjects);
+        } else {
+          setProjects([]);
+          setError('No projects found in ar_assets');
         }
+
+        // Fetch stats
+        const { count: projectCount } = await supabase
+          .from('ar_assets')
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id);
+        const { data: storageData, error: storageError } = await supabase.storage
+          .from('ar-assets')
+          .list('', { limit: 100 });
+        const storageUsed = storageError
+          ? 0
+          : storageData.reduce((sum, obj) => sum + (obj.metadata?.size || 0), 0);
+        const { count: uploadCount } = await supabase
+          .from('storage_upload_logs')
+          .select('id', { count: 'exact' })
+          .eq('user_id', user.id);
+        setStats({
+          createdProjects: projectCount || 0,
+          storageUsed: storageUsed / 1024 / 1024, // Convert to MB
+          totalUploads: uploadCount || 0,
+        });
       } catch (err) {
         console.error('Unexpected error:', err);
         setError('Unexpected error occurred');
@@ -148,7 +150,7 @@ export default function Home() {
       }
     };
     fetchData();
-  }, []);
+  }, [router, searchParams]);
 
   return (
     <div className="flex min-h-screen">
@@ -334,5 +336,13 @@ export default function Home() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-100">Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
