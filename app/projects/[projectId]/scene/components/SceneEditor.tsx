@@ -1,14 +1,14 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { TransformControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import HierarchyPanel from './HierarchyPanel';
 import { OrbitControls } from './OrbitControls';
 import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi';
 import { FaArrowsAlt, FaSync, FaExpand } from 'react-icons/fa';
 import { Project } from '@/types';
+import AssetRenderer from './AssetRenderer';
 
 // Interfaces
 interface Transform {
@@ -19,61 +19,6 @@ interface Transform {
 
 interface SceneEditorProps {
   project: Project;
-}
-
-interface AssetMeshProps {
-  targetPath: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: [number, number, number];
-  onTransformChange: (transform: Transform) => void;
-}
-
-// Type assertion function for tuples
-function toTransformTuple(
-  position: THREE.Vector3,
-  rotation: THREE.Euler,
-  scale: THREE.Vector3
-): Transform {
-  return {
-    position: [position.x, position.y, position.z] as [number, number, number],
-    rotation: [rotation.x, rotation.y, rotation.z] as [number, number, number],
-    scale: [scale.x, scale.y, scale.z] as [number, number, number],
-  };
-}
-
-// AssetMesh Component
-function AssetMesh({ targetPath, position, rotation, scale, onTransformChange }: AssetMeshProps) {
-  const texture = useTexture(targetPath);
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.position.set(...position);
-      meshRef.current.rotation.set(...rotation);
-      meshRef.current.scale.set(...scale);
-    }
-  }, [position, rotation, scale]);
-
-  console.log('AssetMesh: targetPath:', targetPath, 'texture loaded:', !!texture);
-
-  return (
-    <mesh
-      ref={meshRef}
-      onUpdate={() => {
-        if (meshRef.current) {
-          onTransformChange(toTransformTuple(
-            meshRef.current.position,
-            meshRef.current.rotation,
-            meshRef.current.scale
-          ));
-        }
-      }}
-    >
-      <planeGeometry args={[2, 2]} />
-      <meshStandardMaterial map={texture} />
-    </mesh>
-  );
 }
 
 // SceneEditor Component
@@ -90,7 +35,6 @@ export default function SceneEditor({ project }: SceneEditorProps) {
   });
   const [history, setHistory] = useState<{ transform: Transform }[]>([{ transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } }]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const transformControlsRef = useRef<{ axis: string | null; setSpace: (space: string) => void; setTranslationSnap: (snap: number | null) => void; setMode: (mode: string) => void; } | null>(null);
 
   console.log('SceneEditor: project:', JSON.stringify(project, null, 2));
   console.log('SceneEditor: selectedProject:', JSON.stringify(selectedProject, null, 2));
@@ -181,20 +125,6 @@ export default function SceneEditor({ project }: SceneEditorProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [historyIndex]);
-
-  const handleTransformDrag = () => {
-    if (transformMode === 'translate' && transformControlsRef.current) {
-      const controls = transformControlsRef.current;
-      const axis = controls.axis; // 'X', 'Y', 'Z', or null
-      if (axis) {
-        controls.setSpace('local');
-        controls.setTranslationSnap(0.1);
-        controls.setMode('translate');
-      } else {
-        controls.setTranslationSnap(null);
-      }
-    }
-  };
 
   // Calculate camera position based on selected asset
   const cameraPosition: [number, number, number] = transforms
@@ -391,25 +321,14 @@ export default function SceneEditor({ project }: SceneEditorProps) {
         {showGrid && <primitive object={new THREE.GridHelper(20, 20, '#4a4a4a', '#4a4a4a')} />}
         {selectedProject && (
           <Suspense key={selectedProject.id} fallback={<mesh><boxGeometry args={[1, 1, 1]} /><meshStandardMaterial color="#cccccc" /></mesh>}>
-            <TransformControls
-              mode={transformMode}
-              ref={transformControlsRef}
-              onMouseDown={handleTransformDrag}
-              translationSnap={transformMode === 'translate' ? 0.1 : null}
-              rotationSnap={transformMode === 'rotate' ? THREE.MathUtils.degToRad(5) : null}
-              scaleSnap={transformMode === 'scale' ? 0.1 : null}
-              showX={true}
-              showY={true}
-              showZ={true}
-            >
-              <AssetMesh
-                targetPath={selectedProject.target_path}
-                position={transforms.position}
-                rotation={transforms.rotation}
-                scale={transforms.scale}
-                onTransformChange={handleTransformChange}
-              />
-            </TransformControls>
+            <AssetRenderer
+              targetPath={selectedProject.target_path}
+              position={transforms.position}
+              rotation={transforms.rotation}
+              scale={transforms.scale}
+              transformMode={transformMode}
+              onTransformChange={handleTransformChange}
+            />
           </Suspense>
         )}
       </Canvas>
