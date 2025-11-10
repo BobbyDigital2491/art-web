@@ -1,104 +1,131 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
-import { createClient } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+
 import { useParams } from 'next/navigation';
-import Sidebar from '@/app/components/Sidebar';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-interface Project {
-  id: string;
-  project_name: string;
-  target_path: string;
-  media_path?: string;
-  project_type: string;
-  published: boolean;
-}
+import { useEffect, useState } from 'react';
+import { supabase } from '@/app/lib/supabase/client';
+import Image from 'next/image';
 
 export default function ARScene() {
   const { projectId } = useParams();
-  const [project, setProject] = useState<Project | null>(null);
+  const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('ar_assets')
-          .select('id, project_name, target_path, media_path, project_type, published')
-          .eq('id', projectId)
-          .eq('published', true)
-          .single();
+      const { data, error } = await supabase
+        .from('ar_assets')
+        .select('*')
+        .eq('id', projectId)
+        .eq('status', 'published')
+        .single();
 
-        if (error) {
-          setError('Failed to fetch project: ' + error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data) {
-          setProject({
-            id: data.id,
-            project_name: data.project_name,
-            target_path: data.target_path,
-            media_path: data.media_path,
-            project_type: data.project_type,
-            published: data.published,
-          });
-        }
-      } catch (err) {
-        setError('Unexpected error: ' + (err as Error).message);
-      } finally {
-        setLoading(false);
+      if (error || !data) {
+        setError('Project not found or not published');
+      } else {
+        setProject(data);
       }
+      setLoading(false);
     };
-    fetchProject();
+
+    if (projectId) fetchProject();
   }, [projectId]);
 
-  return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <Sidebar onToggle={setSidebarCollapsed} />
+  const startAR = async () => {
+    if (!navigator.xr) {
+      alert('WebXR not supported. Use Safari (iPhone) or Chrome (Android).');
+      return;
+    }
 
-      {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'
-        } p-6 bg-gray-100 transition-all duration-300`}
-      >
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">AR Scene</h1>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+    try {
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!supported) {
+        alert('AR not supported on this device. Try iPhone or Android.');
+        return;
+      }
+
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay', 'light-estimation'],
+        domOverlay: { root: document.body },
+      });
+
+      // SUCCESS — CAMERA OPENED
+      document.getElementById('ar-ui')!.style.display = 'none';
+      document.getElementById('ar-success')!.style.display = 'flex';
+
+      // Image tracking will go here
+      console.log('AR Session Started:', session);
+
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError') {
+        alert('Camera access denied. Go to Settings → Safari → Motion & Orientation Access → ON');
+      } else {
+        alert('AR failed: ' + err.message);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-yellow-600 mb-6"></div>
+          <p className="text-2xl font-bold text-gray-800">Loading AR Experience...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center bg-white p-10 rounded-3xl shadow-2xl">
+          <p className="text-2xl text-red-600 font-bold mb-4">{error || 'Project not found'}</p>
+          <a href="/" className="text-indigo-600 hover:underline text-lg">Back to Dashboard</a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black">
+      {/* UI */}
+      <div id="ar-ui" className="absolute inset-0 flex items-center justify-center z-10">
+        <div className="bg-white/95 backdrop-blur-lg px-12 py-10 rounded-3xl shadow-3xl text-center max-w-lg">
+          <h3 className="text-4xl font-bold text-gray-900 mb-6">AR Experience Ready</h3>
+          <p className="text-xl text-gray-700 mb-8">Tap below to open camera</p>
+          <button
+            onClick={startAR}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-3xl px-16 py-8 rounded-3xl transition transform hover:scale-110 shadow-3xl"
+          >
+            Start AR Camera
+          </button>
+          <div className="mt-10">
+            <Image
+              src={project.target_path}
+              alt="Target"
+              width={140}
+              height={140}
+              className="rounded-2xl mx-auto border-8 border-white shadow-2xl"
+            />
+            <p className="text-lg text-gray-600 mt-4 font-medium">Project: {project.project_name}</p>
           </div>
-        ) : project ? (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">{project.project_name}</h2>
-            <p className="text-gray-600">This is a placeholder for the AR Scene. Full AR implementation to be added.</p>
-            <p className="text-sm text-gray-600 mt-2">Type: {project.project_type.replace('_', ' ').toUpperCase()}</p>
-            {project.media_path && (
-              <p className="text-sm text-gray-600 mt-2">
-                Video:{' '}
-                <a
-                  href={project.media_path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-indigo-500 hover:underline"
-                >
-                  View Video
-                </a>
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-600">Project not found or not published.</p>
-        )}
+          <p className="text-sm text-gray-500 mt-6">
+            iPhone: Safari → Settings → Motion & Orientation Access → ON
+          </p>
+        </div>
+      </div>
+
+      {/* Success */}
+      <div id="ar-success" className=" absolute inset-0 flex items-center justify-center bg-black/90">
+        <div className="text-center">
+          <p className="text-5xl font-bold text-green-400 mb-6 animate-pulse">AR Camera Active!</p>
+          <p className="text-3xl text-white">Point at any surface</p>
+          <p className="text-xl text-gray-300 mt-4">3D object will appear</p>
+        </div>
       </div>
     </div>
   );

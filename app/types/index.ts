@@ -8,14 +8,6 @@ export interface Project {
   project_type?: string | null;
   views?: number;
   scans?: number;
-  status?: 'draft' | 'published';
+  status?: string;
   user_id?: string;
-}
-
-export interface Profile {
-  id: string;
-  display_name: string | null;
-  bio: string | null;
-  profile_picture: string | null;
-  updated_at?: string | null;
 }

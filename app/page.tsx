@@ -4,7 +4,6 @@ import DashboardClient from './DashboardClient';
 
 export const revalidate = 0;
 
-
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   

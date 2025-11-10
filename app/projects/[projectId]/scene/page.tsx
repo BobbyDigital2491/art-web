@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
@@ -17,9 +16,11 @@ export default function ScenePage() {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push('/login');
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.log('No user — redirecting to login');
+          router.replace('/login');
           return;
         }
 
@@ -31,54 +32,80 @@ export default function ScenePage() {
           .single();
 
         if (error) {
-          console.error('Fetch error:', error);
-          setError('Failed to load project');
+          console.error('Supabase fetch error:', error);
+          if (error.code === 'PGRST116') {
+            setError('Project not found');
+          } else {
+            setError('Failed to load project');
+          }
         } else if (data) {
-          setProject(data as Project);
+          setProject(data as unknown as Project);
         } else {
           setError('Project not found');
         }
       } catch (err) {
-        setError('An error occurred');
+        console.error('Unexpected error:', err);
+        setError('An unexpected error occurred');
       } finally {
         setLoading(false);
       }
     };
 
-    if (projectId) fetchProject();
+    if (projectId) {
+      fetchProject();
+    }
   }, [projectId, router]);
 
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-gray-700">Loading AR Scene...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 text-lg mb-4">{error}</p>
-          <button
-            onClick={() => router.back()}
-            className="px-6 py-3 bg-yellow-700 text-white rounded-lg hover:bg-yellow-800"
-          >
-            Go Back
-          </button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-700 font-medium">Loading your AR scene...</p>
         </div>
       </div>
     );
   }
 
-  if (!project) {
+  // Error state
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Project not found</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-xl max-w-md">
+          <div className="text-red-500 text-6xl mb-4">Warning</div>
+          <p className="text-xl text-gray-800 font-semibold mb-4">{error}</p>
+          <p className="text-gray-600 mb-6">This project may have been deleted or you don&apos;t have access.</p>
+          <div className="space-x-4">
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 bg-yellow-700 text-white rounded-lg hover:bg-yellow-800 transition font-semibold"
+            >
+              Back to Dashboard
+            </button>
+            <button
+              onClick={() => router.refresh()}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // No project
+  if (!project) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-2xl text-gray-700">Project not found</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Success — render editor
   return <SceneEditor project={project} />;
 }

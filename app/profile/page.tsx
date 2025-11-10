@@ -1,19 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @next/next/no-html-link-for-pages */
 'use client';
-import { createClient } from '@supabase/supabase-js';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import Sidebar from '../components/Sidebar';
-
-// Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { autoRefreshToken: false, detectSessionInUrl: false } }
-);
+import { supabase } from '../lib/supabase/client';
+import Link from 'next/link';
 
 // TypeScript interface for profile data
 interface Profile {
@@ -42,21 +36,25 @@ function ProfileContent() {
         router.push(`/login?next=/profile${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
         return;
       }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name, bio, profile_picture')
         .eq('id', user.id)
         .single();
+
       if (error && error.code !== 'PGRST116') {
         setError(error.message);
         return;
       }
+
       if (data) {
         setDisplayName(data.display_name || '');
         setBio(data.bio || '');
         setProfilePictureUrl(data.profile_picture || '');
       }
     };
+
     fetchProfile();
   }, [router, searchParams]);
 
@@ -93,18 +91,23 @@ function ProfileContent() {
     if (profilePicture) {
       const fileExt = profilePicture.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
       const { error: uploadError } = await supabase.storage
         .from('ar-assets')
         .upload(fileName, profilePicture, {
           contentType: profilePicture.type,
+          upsert: true,
         });
+
       if (uploadError) {
         setError('Failed to upload profile picture: ' + uploadError.message);
         return;
       }
+
       const { data: urlData } = supabase.storage
         .from('ar-assets')
         .getPublicUrl(fileName);
+      
       profilePicturePath = urlData.publicUrl;
     }
 
@@ -116,11 +119,13 @@ function ProfileContent() {
         bio,
         profile_picture: profilePicturePath,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'id' });
+
     if (error) {
       setError(error.message);
     } else {
       setSuccess('Profile updated successfully!');
+      setProfilePicture(null); // Clear file input
     }
   };
 
@@ -140,7 +145,7 @@ function ProfileContent() {
         {/* Header */}
         <header className="bg-black text-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <a href="/" className="text-2xl font-bold text-yellow-400">ARt Emerged</a>
+            <Link href="/" className="text-2xl font-bold text-yellow-400">ARt Emerged</Link>
             <button
               onClick={handleLogout}
               className="rounded-lg bg-yellow-700 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
@@ -154,6 +159,7 @@ function ProfileContent() {
         <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-white shadow-lg rounded-lg p-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Your Profile</h1>
+            
             <div className="flex flex-col items-center mb-8">
               {profilePictureUrl ? (
                 <Image
@@ -162,10 +168,11 @@ function ProfileContent() {
                   width={120}
                   height={120}
                   className="rounded-full object-cover border-2 border-yellow-700"
+                  unoptimized
                 />
               ) : (
                 <Image
-                  src="/Avatar"
+                  src="/default-avatar.png"
                   alt="Default Avatar"
                   width={120}
                   height={120}
@@ -179,6 +186,7 @@ function ProfileContent() {
                 {bio || 'Add a bio to tell others about yourself.'}
               </p>
             </div>
+
             <form onSubmit={handleUpdate} className="space-y-6">
               <div>
                 <label htmlFor="display-name" className="block text-sm font-medium text-gray-700">
@@ -193,6 +201,7 @@ function ProfileContent() {
                   onChange={(e) => setDisplayName(e.target.value)}
                 />
               </div>
+
               <div>
                 <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
                   Bio
@@ -206,6 +215,7 @@ function ProfileContent() {
                   rows={4}
                 />
               </div>
+
               <div>
                 <label htmlFor="profile-picture" className="block text-sm font-medium text-gray-700">
                   Profile Picture
@@ -214,21 +224,23 @@ function ProfileContent() {
                   type="file"
                   id="profile-picture"
                   accept="image/*"
-                  className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-yellow-700 transition"
+                  className="mt-1 w-full rounded-md border-2 border-gray-300 py-2 px-4 text-gray-700 focus:outline-none focus:border-yellow-700 transition file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-700 file:text-white hover:file:bg-yellow-800"
                   onChange={handleFileChange}
                 />
               </div>
+
               <div className="flex justify-center">
                 <button
                   type="submit"
-                  className="rounded-lg bg-yellow-700 px-6 py-2 text-base font-semibold text-white shadow-md hover:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                  className="rounded-lg bg-yellow-700 px-6 py-3 text-base font-semibold text-white shadow-md hover:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition"
                 >
                   Save Profile
                 </button>
               </div>
             </form>
-            {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
-            {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+
+            {error && <p className="mt-6 text-red-500 text-center font-medium">{error}</p>}
+            {success && <p className="mt-6 text-green-500 text-center font-medium">{success}</p>}
           </div>
         </main>
       </div>

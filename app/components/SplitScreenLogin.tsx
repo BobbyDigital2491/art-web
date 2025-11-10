@@ -37,7 +37,7 @@ export default function SplitScreenLogin() {
       <div className="flex-1 bg-gradient-to-br from-yellow-400 to-orange-600 flex items-center justify-center">
         
         <div className="text-white text-center">
-          <h1 className="text-6xl font-bold mb-4">ArtWeb AR</h1>
+          <h1 className="text-6xl font-bold mb-4">ARt Emerged Web</h1>
           <p className="text-2xl">Create AR experiences in minutes</p>
           <img className=' flex-1 mx-auto flex items-center justify-center' src='https://peach-informal-llama-875.mypinata.cloud/ipfs/bafybeigzf6vg6cjkv4e52czwgacp26ntvhm2qb7u7r3xbrhinxavgd3qou'  alt=''/>
           

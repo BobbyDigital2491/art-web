@@ -1,20 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push('@tailwindcss/oxide');
-    }
-
-    // Silence Supabase Realtime warning
-    config.ignoreWarnings = [
-      { module: /realtime-js/, message: /Critical dependency/ }
-    ];
-
-    return config;
-  },
+  swcMinify: true,
 
   images: {
     remotePatterns: [
@@ -26,9 +13,47 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'peach-informal-llama-875.mypinata.cloud',
-        pathname: '/ipfs/bafybeigzf6vg6cjkv4e52czwgacp26ntvhm2qb7u7r3xbrhinxavgd3qou',
+        pathname: '/ipfs/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.qrserver.com',
       },
     ],
+  },
+
+  webpack: (config) => {
+    // Fix A-Frame + WebXR
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+
+    return config;
+  },
+
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; frame-src 'self' https:; worker-src 'self' blob:;",
+          },
+          { key: 'X-Frame-Options', value: 'ALLOWALL' },
+        ],
+      },
+    ];
+  },
+
+  experimental: {
+    syncScripts: true,
   },
 };
 

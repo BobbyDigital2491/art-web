@@ -1,16 +1,12 @@
-/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { createClient } from '@supabase/supabase-js';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Sidebar from '../components/Sidebar';
 import { HiX } from 'react-icons/hi';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '../lib/supabase/client';
 
 interface Project {
   id: string;
@@ -33,216 +29,198 @@ export default function Projects() {
     const fetchProjects = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
         if (userError || !user) {
-          setError('Authentication failed');
+          setError('Authentication failed — please log in again');
           setLoading(false);
           return;
         }
 
-        // Check if project_type column exists
-        const hasProjectType = await supabase
-          .rpc('column_exists', { table_name: 'ar_assets', column_name: 'project_type' })
-          .then(({ data }) => data);
-
-        // Fetch all user projects
-        const selectColumns = `id, project_name, description, target_path, media_path, updated_at${
-          hasProjectType ? ', project_type' : ''
-        }`;
+        // Fetch all columns safely
         const { data: projectsData, error: projectsError } = await supabase
           .from('ar_assets')
-          .select(selectColumns)
+          .select('id, project_name, description, target_path, media_path, updated_at, project_type')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
-        console.log('ar_assets query:', selectColumns);
-        console.log('ar_assets result:', projectsData, 'error:', projectsError);
-
         if (projectsError) {
-          setError('Failed to fetch projects: ' + projectsError.message);
+          console.error('Supabase error:', projectsError);
+          setError('Failed to load projects');
           setProjects([]);
         } else if (projectsData && projectsData.length > 0) {
-          const validProjects: Project[] = projectsData
-            .filter((p: any) => p.id && p.project_name)
-            .map((p: any) => ({
-              id: p.id,
-              project_name: p.project_name,
-              description: p.description || 'No description',
-              target_path:
-                p.target_path ||
-                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-              media_path: p.media_path,
-              updated_at: p.updated_at || new Date().toISOString(),
-              project_type: hasProjectType ? p.project_type : undefined,
-            }));
+          const validProjects: Project[] = projectsData.map((p: any) => ({
+            id: p.id,
+            project_name: p.project_name || 'Untitled Project',
+            description: p.description || 'No description',
+            target_path: p.target_path || '/fallback-ar.png',
+            media_path: p.media_path,
+            updated_at: p.updated_at || new Date().toISOString(),
+            project_type: p.project_type,
+          }));
           setProjects(validProjects);
         } else {
           setProjects([]);
-          setError('No projects found');
+          setError(null); // No error — just no projects
         }
       } catch (err) {
-        setError('Unexpected error: ' + (err as Error).message);
-        setProjects([]);
+        console.error('Unexpected error:', err);
+        setError('An unexpected error occurred');
       } finally {
         setLoading(false);
       }
     };
+
     fetchProjects();
   }, []);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       {/* Sidebar */}
       <Sidebar onToggle={setSidebarCollapsed} />
 
       {/* Main Content */}
-      <div
-        className={`flex-1 ${
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'
-        } p-6 bg-gray-100 transition-all duration-300`}
-      >
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">All Projects</h1>
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        ) : (
-          <div className="flex flex-col md:flex-row md:flex-wrap gap-6">
-            {projects.length > 0 ? (
-              projects.map((project) => (
+      <div className={`flex-1 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'} transition-all duration-300 p-8`}>
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl font-bold text-gray-900 mb-8">All Projects</h1>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-600"></div>
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-2xl text-gray-600 mb-6">No projects yet</p>
+              <Link
+                href="/create"
+                className="inline-block px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-lg rounded-full hover:shadow-2xl transition"
+              >
+                Create Your First AR Experience
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow md:w-[calc(33.333%-1.5rem)]"
                   onClick={() => setSelectedProject(project)}
+                  className="group relative bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-105 transition-all duration-300 cursor-pointer"
                 >
-                  <img
-                    src={project.target_path}
-                    alt={project.project_name}
-                    className="w-full h-40 object-cover rounded-md mb-4"
-                  />
-                  <h3 className="text-lg font-semibold text-gray-800">{project.project_name}</h3>
-                  <p className="text-sm text-gray-600">{project.description}</p>
-                  {project.project_type && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Type: {project.project_type.replace('_', ' ').toUpperCase()}
+                  <div className="aspect-square relative">
+                    <Image
+                      src={project.target_path}
+                      alt={project.project_name}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition" />
+                    <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition">
+                      <p className="text-sm font-medium">Click to view</p>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-gray-800 truncate">{project.project_name}</h3>
+                    <p className="text-gray-600 text-sm mt-2 line-clamp-2">{project.description}</p>
+                    {project.project_type && (
+                      <span className="inline-block mt-3 px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                        {project.project_type.replace('_', ' ').toUpperCase()}
+                      </span>
+                    )}
+                    <p className="text-xs text-gray-500 mt-3">
+                      Updated {new Date(project.updated_at).toLocaleDateString()}
                     </p>
-                  )}
-                  {project.media_path && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Video:{' '}
-                      <a
-                        href={project.media_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-500 hover:underline"
-                      >
-                        View Video
-                      </a>
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    Updated:{' '}
-                    {new Date(project.updated_at).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: 'numeric',
-                      hour12: true,
-                    })}
-                  </p>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-gray-600">No projects available. Create a project to get started!</p>
-            )}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Modal */}
         {selectedProject && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-            <div className="bg-white p-6 rounded-lg max-w-lg w-full mx-4 animate-scale-in">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">{selectedProject.project_name}</h2>
+          <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden animate-scale-in">
+              <div className="relative">
+                <Image
+                  src={selectedProject.target_path}
+                  alt={selectedProject.project_name}
+                  width={800}
+                  height={400}
+                  className="w-full object-cover"
+                  unoptimized
+                />
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="p-2 rounded-full hover:bg-gray-200"
+                  className="absolute top-4 right-4 bg-white/90 p-2 rounded-full hover:bg-white transition"
                 >
-                  <HiX className="h-6 w-6 text-gray-600" />
+                  <HiX className="h-6 w-6 text-gray-800" />
                 </button>
               </div>
-              <img
-                src={selectedProject.target_path}
-                alt={selectedProject.project_name}
-                className="w-full h-48 object-cover rounded-md mb-4"
-              />
-              <p className="text-gray-600">{selectedProject.description}</p>
-              {selectedProject.project_type && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Type: {selectedProject.project_type.replace('_', ' ').toUpperCase()}
-                </p>
-              )}
-              {selectedProject.media_path && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Video:{' '}
-                  <a
-                    href={selectedProject.media_path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-500 hover:underline"
+              <div className="p-8">
+                <h2 className="text-3xl font-bold text-gray-800 mb-4">{selectedProject.project_name}</h2>
+                <p className="text-gray-600 mb-6">{selectedProject.description}</p>
+                
+                {selectedProject.project_type && (
+                  <div className="mb-4">
+                    <span className="text-sm font-medium text-gray-600">Type:</span>{' '}
+                    <span className="inline-block px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                      {selectedProject.project_type.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </div>
+                )}
+
+                {selectedProject.media_path && (
+                  <div className="mb-6">
+                    <a
+                      href={selectedProject.media_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-medium"
+                    >
+                      View Video
+                    </a>
+                  </div>
+                )}
+
+                <div className="flex gap-4">
+                  <Link
+                    href={`/projects/${selectedProject.id}/edit`}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center py-4 rounded-xl font-bold hover:shadow-lg transition"
                   >
-                    View Video
-                  </a>
-                </p>
-              )}
-              <p className="text-xs text-gray-500 mt-2">
-                Updated:{' '}
-                {new Date(selectedProject.updated_at).toLocaleString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: 'numeric',
-                  minute: 'numeric',
-                  hour12: true,
-                })}
-              </p>
-              <div className="mt-4 flex gap-2">
-                <Link
-                  href={`/projects/${selectedProject.id}/edit`}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-                >
-                  Edit
-                </Link>
-                <Link
-                  href={`/projects/${selectedProject.id}/scene`}
-                  className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-                >
-                  View AR Scene
-                </Link>
+                    Edit Project
+                  </Link>
+                  <Link
+                    href={`/projects/${selectedProject.id}/scene`}
+                    className="flex-1 bg-green-600 text-white text-center py-4 rounded-xl font-bold hover:bg-green-700 transition"
+                  >
+                    Open AR Scene
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
         )}
-      </div>
 
-      {/* CSS for Modal Animations */}
-      <style jsx>{`
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        .animate-scale-in {
-          animation: scaleIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
+        {/* Animations */}
+        <style jsx>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+          .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+          .animate-scale-in { animation: scaleIn 0.3s ease-out; }
+        `}</style>
+      </div>
     </div>
   );
 }

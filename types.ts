@@ -1,4 +1,7 @@
 export interface Project {
+  views: number;
+  scans: number;
+  status: string;
   id: string;
   project_name: string;
   description: string;
