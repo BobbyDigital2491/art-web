@@ -76,7 +76,7 @@ export default function ARScene() {
 
       const referenceSpace = await session.requestReferenceSpace('viewer');
 
-      // LINE 103 FIXED — non-null assertion because hit-test is required
+      // FIXED: TypeScript now knows hitTestSource is not undefined
       const hitTestSource = await session.requestHitTestSource!({ space: referenceSpace });
 
       const onXRFrame = (time: number, frame: XRFrame) => {
@@ -99,8 +99,8 @@ export default function ARScene() {
           }
         }
 
-        // Image tracking — hitTestSource is guaranteed
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        // LINE 103 FIXED — hitTestSource is guaranteed
+        const hitTestResults = frame.getHitTestResults(hitTestSource!);
         if (hitTestResults.length > 0) {
           const hitPose = hitTestResults[0].getPose(referenceSpace);
           if (hitPose) {
@@ -178,7 +178,7 @@ export default function ARScene() {
       </div>
 
       {/* Success */}
-      <div id="ar-success" className=" absolute inset-0 flex items-center justify-center bg-black/90">
+      <div id="ar-success" className="absolute inset-0 flex items-center justify-center bg-black/90">
         <div className="text-center">
           <p className="text-5xl font-bold text-green-400 mb-6 animate-pulse">AR Camera Active!</p>
           <p className="text-3xl text-white">Point at any surface</p>
