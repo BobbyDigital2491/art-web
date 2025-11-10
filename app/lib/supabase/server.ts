@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import type { CookieOptions } from '@supabase/ssr';
 
-export const createSupabaseServerClient = () => {
-  const cookieStore = cookies();
+export const createSupabaseServerClient = async () => {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,21 +11,20 @@ export const createSupabaseServerClient = () => {
     {
       cookies: {
         get(name: string) {
-          // Type assertion fixes the "Property 'value' does not exist on type '{}'" error
-          return (cookieStore.get(name) as { value: string } | undefined)?.value;
+          return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: any) {
           try {
             cookieStore.set({ name, value, ...options });
           } catch {
-            // Ignored: set() called from a Server Component
+            // Ignore
           }
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, options: any) {
           try {
             cookieStore.set({ name, value: '', ...options });
           } catch {
-            // Ignored: delete() called from a Server Component
+            // Ignore
           }
         },
       },

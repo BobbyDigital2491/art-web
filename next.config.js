@@ -1,20 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
 
-  // THIS IS THE ONLY LINE THAT MATTERS
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = config.externals || [];
       config.externals.push('@tailwindcss/oxide');
     }
+
+    // Silence Supabase Realtime warning
+    config.ignoreWarnings = [
+      { module: /realtime-js/, message: /Critical dependency/ }
+    ];
+
     return config;
   },
 
   images: {
-    domains: ['yffzwfxgwqjlxumxleeb.supabase.co'],
-    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'yffzwfxgwqjlxumxleeb.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 };
 
