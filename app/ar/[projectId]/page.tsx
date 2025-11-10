@@ -75,8 +75,9 @@ export default function ARScene() {
       scene.add(cube);
 
       const referenceSpace = await session.requestReferenceSpace('viewer');
-      const hitTestSourceRequest = await session.requestHitTestSource({ space: referenceSpace });
-      const hitTestSource = hitTestSourceRequest; // Guaranteed to exist
+
+      // LINE 103 FIXED — non-null assertion because hit-test is required
+      const hitTestSource = await session.requestHitTestSource!({ space: referenceSpace });
 
       const onXRFrame = (time: number, frame: XRFrame) => {
         const pose = frame.getViewerPose(referenceSpace);
@@ -98,7 +99,7 @@ export default function ARScene() {
           }
         }
 
-        // Image tracking
+        // Image tracking — hitTestSource is guaranteed
         const hitTestResults = frame.getHitTestResults(hitTestSource);
         if (hitTestResults.length > 0) {
           const hitPose = hitTestResults[0].getPose(referenceSpace);
@@ -152,8 +153,8 @@ export default function ARScene() {
       {/* UI */}
       <div id="ar-ui" className="absolute inset-0 flex items-center justify-center z-10">
         <div className="bg-white/95 backdrop-blur-lg px-12 py-10 rounded-3xl shadow-3xl text-center max-w-lg">
-          <h3 className="text-4xl font-bold text-gray-900 mb-6">Congratulations</h3>
-          <p className="text-xl text-gray-700 mb-8">Your AR Experience is Ready</p>
+          <h3 className="text-4xl font-bold text-gray-900 mb-6">AR Experience Ready</h3>
+          <p className="text-xl text-gray-700 mb-8">Tap below to open camera</p>
           <button
             onClick={startAR}
             className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-3xl px-16 py-8 rounded-3xl transition transform hover:scale-110 shadow-3xl"
@@ -171,16 +172,13 @@ export default function ARScene() {
             <p className="text-lg text-gray-600 mt-4 font-medium">Project: {project.project_name}</p>
           </div>
           <p className="text-sm text-gray-500 mt-6">
-            Coming Soon
-          </p>
-          <p className="text-sm text-gray-500 mt-6">
             Works on iPhone (Safari) • Android (Chrome)
           </p>
         </div>
       </div>
 
       {/* Success */}
-      <div id="ar-success" className="hidden absolute inset-0 items-center justify-center bg-black/90">
+      <div id="ar-success" className=" absolute inset-0 flex items-center justify-center bg-black/90">
         <div className="text-center">
           <p className="text-5xl font-bold text-green-400 mb-6 animate-pulse">AR Camera Active!</p>
           <p className="text-3xl text-white">Point at any surface</p>
