@@ -1,0 +1,20 @@
+{
+  "build": {
+    "env": {
+      "NODE_VERSION": "20",
+      "NEXT_PRIVATE_TARGET": "server"
+    }
+  },
+  "functions": {
+    "app/api/**/*": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ]
+}
