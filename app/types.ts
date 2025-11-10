@@ -4,6 +4,16 @@ export interface Project {
   description: string | null;
   target_path: string;
   media_path: string | null;
-  status: string;
-  user_id: string;
+  updated_at: string | null;
+  project_type?: string | null;
+  status?: string | null;
+  user_id?: string | null;
+}
+
+export interface Profile {
+  id: string;
+  display_name: string | null;
+  bio: string | null;
+  profile_picture: string | null;
+  updated_at?: string | null;
 }

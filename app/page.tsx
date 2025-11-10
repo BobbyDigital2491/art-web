@@ -192,7 +192,7 @@ function HomeContent() {
 
         {/* Stats Section */}
         <div className="p-6 bg-gray-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-600">Total Projects</h3>
               <p className="text-3xl font-bold text-yellow-700 mt-2">{stats.totalProjects}</p>
@@ -286,7 +286,7 @@ function HomeContent() {
                 <p className="text-gray-700 mb-6">{selectedProject.description || 'No description'}</p>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-4">
                   <Link
                     href={`/projects/${selectedProject.id}/edit`}
                     className="bg-gray-700 text-white text-center py-3 rounded-md hover:bg-gray-800 transition font-medium flex items-center justify-center gap-2"
