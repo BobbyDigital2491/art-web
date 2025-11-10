@@ -25,8 +25,8 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'via.placeholder.com',
-        pathname: '/Avatar',
+        hostname: 'peach-informal-llama-875.mypinata.cloud',
+        pathname: '/ipfs/bafybeigzf6vg6cjkv4e52czwgacp26ntvhm2qb7u7r3xbrhinxavgd3qou',
       },
     ],
   },
