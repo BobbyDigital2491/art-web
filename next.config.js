@@ -3,19 +3,24 @@ const nextConfig = {
   reactStrictMode: true,
 
   webpack: (config) => {
-    // Aliases for Three.js and React Three Fiber
+    // Fix Tailwind v4 oxide native binary error on Vercel
+    config.externals.push({
+      '@tailwindcss/oxide': 'commonjs @tailwindcss/oxide',
+    });
+
+    // Your existing aliases
     config.resolve.alias['three'] = require.resolve('three');
     config.resolve.alias['@react-three/fiber'] = require.resolve('@react-three/fiber');
     config.resolve.alias['@react-three/drei'] = require.resolve('@react-three/drei');
 
-    // Fallbacks for Node.js modules
+    // Fallbacks
     config.resolve.fallback = {
       fs: false,
       path: false,
       crypto: false,
     };
 
-    // GLSL shader support
+    // GLSL
     config.module.rules.push({
       test: /\.(glsl|vs|fs|vert|frag)$/,
       use: ['raw-loader', 'glslify-loader'],
