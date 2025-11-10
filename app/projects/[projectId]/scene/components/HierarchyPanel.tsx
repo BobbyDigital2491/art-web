@@ -1,6 +1,7 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/app/lib/supabase/client';
 import { Project } from '@/types';
 import Image from 'next/image';
 
@@ -10,109 +11,122 @@ interface HierarchyPanelProps {
   selectedProjectId: string | null;
 }
 
-export default function HierarchyPanel({ selectedProject, onSelectAsset, selectedProjectId }: HierarchyPanelProps) {
+export default function HierarchyPanel({
+  selectedProject,
+  onSelectAsset,
+  selectedProjectId,
+}: HierarchyPanelProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState<boolean>(false);
-  const supabase = createClientComponentClient();
 
-  // Check if target_path is an image (png, jpg, jpeg, webp)
+  // Check if target_path is an image
   const isImage = (path: string | null): boolean => {
     if (!path) return false;
     const ext = path.toLowerCase().split('.').pop();
-    const isImageResult = ['png', 'jpg', 'jpeg', 'webp'].includes(ext || '');
-    console.log('HierarchyPanel: target_path:', path, 'isImage:', isImageResult);
-    return isImageResult;
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext || '');
   };
 
-  // Normalize target_path by removing Supabase URL prefix
+  // Normalize path from public URL to storage path
   const normalizePath = (path: string | null | undefined): string | null => {
     if (!path) return null;
     const prefix = 'https://yffzwfxgwqjlxumxleeb.supabase.co/storage/v1/object/public/ar-assets/';
-    if (path.startsWith(prefix)) {
-      const normalized = path.replace(prefix, '');
-      console.log('HierarchyPanel: Normalized target_path:', path, 'to:', normalized);
-      return normalized;
-    }
-    console.log('HierarchyPanel: target_path already normalized:', path);
-    return path;
+    return path.startsWith(prefix) ? path.replace(prefix, '') : path;
   };
 
-  // Fetch signed URL for target_path
+  // Fetch signed URL for target image
   useEffect(() => {
-    async function fetchSignedUrl() {
-      const targetPath = normalizePath(selectedProject?.target_path);
-      if (targetPath && isImage(targetPath)) {
-        try {
-          const { data, error } = await supabase.storage
-            .from('ar-assets')
-            .createSignedUrl(targetPath, 60);
-          if (error) {
-            console.error('HierarchyPanel: Failed to get signed URL for', targetPath, ':', error.message);
-            setSignedUrl('/fallback-image.png');
-            setImageError(true);
-          } else {
-            console.log('HierarchyPanel: Signed URL for', targetPath, ':', data.signedUrl);
-            setSignedUrl(data.signedUrl);
-            setImageError(false);
-          }
-        } catch (err) {
-          console.error('HierarchyPanel: Error fetching signed URL for', targetPath, ':', err);
+    const fetchSignedUrl = async () => {
+      if (!selectedProject?.target_path) {
+        setSignedUrl('/fallback-image.png');
+        setImageError(true);
+        return;
+      }
+
+      const normalizedPath = normalizePath(selectedProject.target_path);
+
+      if (!normalizedPath || !isImage(normalizedPath)) {
+        setSignedUrl('/fallback-image.png');
+        setImageError(true);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.storage
+          .from('ar-assets')
+          .createSignedUrl(normalizedPath, 3600); // 1 hour
+
+        if (error || !data?.signedUrl) {
+          console.error('Failed to get signed URL:', error);
           setSignedUrl('/fallback-image.png');
           setImageError(true);
+        } else {
+          setSignedUrl(data.signedUrl);
+          setImageError(false);
         }
-      } else {
-        console.log('HierarchyPanel: No valid target_path or not an image for', selectedProject?.id || 'no project');
+      } catch (err) {
+        console.error('Error fetching signed URL:', err);
         setSignedUrl('/fallback-image.png');
         setImageError(true);
       }
-    }
+    };
+
     fetchSignedUrl();
-  }, [selectedProject?.id, selectedProject?.target_path, supabase.storage]);
+  }, [selectedProject?.id, selectedProject?.target_path]);
 
   return (
-    <div className="absolute top-4 left-4 bg-white shadow-lg rounded-lg z-10 w-48 md:w-64 max-h-[calc(100vh-2rem)] overflow-y-auto">
-      <div className="p-4">
-        <h2 className="text-sm font-semibold text-gray-800 mb-2">Selected Asset</h2>
+    <div className="absolute top-4 left-4 bg-white shadow-2xl rounded-xl z-50 w-64 max-h-[calc(100vh-8rem)] overflow-y-auto border border-gray-200">
+      <div className="p-5 border-b border-gray-200">
+        <h2 className="text-lg font-bold text-gray-800">Selected Asset</h2>
+      </div>
+
+      <div className="p-5">
         {selectedProject ? (
           <div
-            className={`flex items-center space-x-2 p-2 rounded cursor-pointer ${
-              selectedProjectId === selectedProject.id ? 'bg-blue-100' : 'hover:bg-gray-100'
+            className={`flex items-center space-x-4 p-4 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
+              selectedProjectId === selectedProject.id
+                ? 'bg-blue-50 border-blue-500 shadow-md'
+                : 'hover:bg-gray-50 border-transparent hover:border-gray-300'
             }`}
             onClick={() => onSelectAsset(selectedProject)}
           >
-            {selectedProject.target_path && isImage(selectedProject.target_path) && signedUrl && !imageError ? (
-              <Image
-                src={signedUrl}
-                alt={selectedProject.project_name}
-                width={50}
-                height={50}
-                className="mr-2 border-2 border-blue-500 rounded object-cover"
-                unoptimized
-                onError={() => {
-                  console.error('HierarchyPanel: Image load error for', selectedProject.target_path);
-                  setSignedUrl('/fallback-image.png');
-                  setImageError(true);
-                }}
-                onLoad={() => {
-                  console.log('HierarchyPanel: Image loaded successfully for', selectedProject.target_path);
-                  setImageError(false);
-                }}
-              />
-            ) : (
-              <Image
-                src="/fallback-image.png"
-                alt={selectedProject.project_name}
-                width={50}
-                height={50}
-                className="mr-2 border-2 border-red-500 rounded object-cover"
-                unoptimized
-                onLoad={() => console.log('HierarchyPanel: Fallback image loaded for', selectedProject.id)}
-              />
-            )}
-            <span className="text-xs truncate">{selectedProject.project_name}</span>
+            <div className="flex-shrink-0">
+              {signedUrl && !imageError ? (
+                <Image
+                  src={signedUrl}
+                  alt={selectedProject.project_name}
+                  width={60}
+                  height={60}
+                  className="rounded-lg object-cover border-2 border-blue-400 shadow-sm"
+                  unoptimized
+                  onError={() => {
+                    setSignedUrl('/fallback-image.png');
+                    setImageError(true);
+                  }}
+                />
+              ) : (
+                <div className="bg-gray-200 border-2 border-dashed border-red-400 rounded-lg w-16 h-16 flex items-center justify-center">
+                  <span className="text-xs text-red-600 font-medium">No Image</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-800 truncate text-sm">
+                {selectedProject.project_name}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {selectedProject.description || 'No description'}
+              </p>
+              {imageError && (
+                <p className="text-xs text-red-500 mt-1">Image failed to load</p>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="text-xs text-gray-500">No asset selected</div>
+          <div className="text-center py-8">
+            <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">No asset selected</p>
+          </div>
         )}
       </div>
     </div>

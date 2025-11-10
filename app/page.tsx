@@ -1,24 +1,18 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { HiX, HiTrash, HiExternalLink, HiChevronDown, HiPencil, HiEye, HiShare, HiQrcode, HiLink } from 'react-icons/hi';
+import { HiX, HiTrash, HiChevronDown, HiPencil, HiEye, HiShare, HiQrcode, HiLink, HiExternalLink } from 'react-icons/hi';
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from './lib/supabase/client';
 import type { Project } from '@/types';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { autoRefreshToken: false, detectSessionInUrl: false } }
-);
 
 function HomeContent() {
   const router = useRouter();
@@ -39,7 +33,6 @@ function HomeContent() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
 
-  // Refresh session on mount
   useEffect(() => {
     const refreshSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -53,13 +46,12 @@ function HomeContent() {
     setError(null);
 
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        router.push(`/login?next=${encodeURIComponent('/')}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
         return;
       }
 
-      // Profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('display_name, profile_picture')
@@ -71,7 +63,6 @@ function HomeContent() {
         profile_picture: profileData?.profile_picture || '/default-avatar.png',
       });
 
-      // Projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('ar_assets')
         .select('id, project_name, description, target_path, media_path, updated_at, project_type')
@@ -88,7 +79,7 @@ function HomeContent() {
       setProjects(projectsData || []);
       setStats({
         totalProjects: total,
-        storageUsed: '—', // You can add storage API later
+        storageUsed: '—',
         lastUpload: latest
       });
 
@@ -151,7 +142,6 @@ function HomeContent() {
       <Sidebar onToggle={setSidebarCollapsed} />
 
       <div className={`flex-1 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'} transition-all duration-300`}>
-        {/* Top Bar */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">My Projects</h1>
@@ -190,9 +180,8 @@ function HomeContent() {
           </div>
         </div>
 
-        {/* Stats Section */}
         <div className="p-6 bg-gray-100">
-          <div className="grid grid-cols-3 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-sm font-medium text-gray-600">Total Projects</h3>
               <p className="text-3xl font-bold text-yellow-700 mt-2">{stats.totalProjects}</p>
@@ -207,7 +196,6 @@ function HomeContent() {
             </div>
           </div>
 
-          {/* Projects Grid */}
           {error && <p className="text-red-600 mb-4 bg-red-50 p-4 rounded-lg">{error}</p>}
 
           {projects.length > 0 ? (
@@ -261,7 +249,6 @@ function HomeContent() {
           )}
         </div>
 
-        {/* Project Detail Modal */}
         {selectedProject && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-screen overflow-y-auto">
@@ -285,8 +272,7 @@ function HomeContent() {
                 </div>
                 <p className="text-gray-700 mb-6">{selectedProject.description || 'No description'}</p>
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   <Link
                     href={`/projects/${selectedProject.id}/edit`}
                     className="bg-gray-700 text-white text-center py-3 rounded-md hover:bg-gray-800 transition font-medium flex items-center justify-center gap-2"
@@ -314,7 +300,6 @@ function HomeContent() {
           </div>
         )}
 
-        {/* QR Code + Link Modal */}
         {showQRModal && selectedProject && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-8 max-w-sm w-full">
@@ -356,7 +341,6 @@ function HomeContent() {
           </div>
         )}
 
-        {/* Delete Confirmation */}
         {projectToDelete && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-sm w-full p-6">

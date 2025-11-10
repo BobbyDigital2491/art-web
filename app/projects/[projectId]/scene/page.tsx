@@ -1,16 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import SceneEditor from './components/SceneEditor';
+import { supabase } from '@/app/lib/supabase/client';
 import { Project } from '@/types';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 export default function ScenePage() {
   const router = useRouter();
@@ -39,7 +34,6 @@ export default function ScenePage() {
           console.error('Fetch error:', error);
           setError('Failed to load project');
         } else if (data) {
-          // Cast to Project type — safe because we selected all needed fields
           setProject(data as Project);
         } else {
           setError('Project not found');
