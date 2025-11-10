@@ -165,7 +165,7 @@ function ProfileContent() {
                 />
               ) : (
                 <Image
-                  src="https://via.placeholder.com/120?text=Avatar"
+                  src="/Avatar"
                   alt="Default Avatar"
                   width={120}
                   height={120}

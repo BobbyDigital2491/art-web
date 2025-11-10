@@ -89,7 +89,7 @@ export default function HierarchyPanel({
             }`}
             onClick={() => onSelectAsset(selectedProject)}
           >
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               {signedUrl && !imageError ? (
                 <Image
                   src={signedUrl}

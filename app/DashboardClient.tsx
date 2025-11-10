@@ -35,7 +35,9 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      <Sidebar />
+      <Sidebar onToggle={function (collapsed: boolean): void {
+              throw new Error('Function not implemented.');
+          } } />
       
       {/*Header*/}
       <div className="flex-1 ml-64 p-8">

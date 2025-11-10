@@ -23,6 +23,11 @@ const nextConfig = {
         hostname: 'yffzwfxgwqjlxumxleeb.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        pathname: '/Avatar',
+      },
     ],
   },
 };
