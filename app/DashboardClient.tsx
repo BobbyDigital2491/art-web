@@ -1,14 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { HiX, HiTrash, HiChevronDown, HiPencil, HiEye, HiShare } from 'react-icons/hi';
+import { HiX, HiShare, HiQrcode } from 'react-icons/hi';
 import { QRCodeSVG } from 'qrcode.react';
-import type { Project } from '@/types';
+
+interface Project {
+  id: string;
+  project_name: string;
+  description: string | null;
+  target_path: string | null;
+}
 
 interface DashboardClientProps {
   initialProjects: Project[];
@@ -44,7 +50,7 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
           {projects.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-2xl text-gray-600 mb-4">No projects yet</p>
-              <Link href="/create" className="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700">
+              <Link href="/create" className="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition">
                 Create Your First AR Experience
               </Link>
             </div>
@@ -76,6 +82,7 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
         </div>
       </div>
 
+      {/* Project Modal */}
       {selectedProject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
@@ -86,26 +93,27 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
               </button>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <Link href={`/projects/${selectedProject.id}/edit`} className="bg-gray-700 text-white text-center py-3 rounded">
+              <Link href={`/projects/${selectedProject.id}/edit`} className="bg-gray-700 text-white text-center py-3 rounded hover:bg-gray-800">
                 Edit Details
               </Link>
-              <Link href={`/projects/${selectedProject.id}/scene`} className="bg-blue-600 text-white text-center py-3 rounded">
+              <Link href={`/projects/${selectedProject.id}/scene`} className="bg-blue-600 text-white text-center py-3 rounded hover:bg-blue-700">
                 Open Editor
               </Link>
-              <button onClick={() => setShowQRModal(true)} className="bg-green-600 text-white py-3 rounded">
-                Share
+              <button onClick={() => setShowQRModal(true)} className="bg-green-600 text-white py-3 rounded hover:bg-green-700">
+                <HiShare className="inline mr-2" /> Share
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* QR Modal */}
       {showQRModal && selectedProject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 text-center">
             <QRCodeSVG value={`https://art-web.vercel.app/p/${selectedProject.id}`} size={256} />
             <p className="mt-4 text-sm text-gray-600">Scan to view in AR</p>
-            <button onClick={() => setShowQRModal(false)} className="mt-4 text-red-600">
+            <button onClick={() => setShowQRModal(false)} className="mt-4 text-red-600 font-medium">
               Close
             </button>
           </div>
