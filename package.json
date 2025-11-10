@@ -18,12 +18,14 @@
     "next": "^15.4.5",
     "opencv.js": "^1.2.1",
     "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-dropzone": "^14.3.8",
     "react-icons": "^5.5.0",
     "stripe": "^18.4.0",
-    "three": "^0.179.1"
+    "three": "^0.179.1",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

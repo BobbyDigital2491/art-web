@@ -170,7 +170,7 @@ function SplitScreenLogin() {
               <input className="h-5" type="checkbox" id="checkbox" />
               <label className="text-sm" htmlFor="checkbox">Remember me</label>
             </div>
-            <Link href="#" className="text-sm underline">
+            <Link href="/forgot-password" className="text-sm underline">
               Forgot password?
             </Link>
           </div>

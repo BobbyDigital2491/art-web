@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -68,7 +67,7 @@ export default function HierarchyPanel({ selectedProject, onSelectAsset, selecte
       }
     }
     fetchSignedUrl();
-  }, [selectedProject?.target_path]);
+  }, [selectedProject?.id, selectedProject?.target_path, supabase.storage]);
 
   return (
     <div className="absolute top-4 left-4 bg-white shadow-lg rounded-lg z-10 w-48 md:w-64 max-h-[calc(100vh-2rem)] overflow-y-auto">

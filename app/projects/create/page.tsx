@@ -26,6 +26,12 @@ export default function CreateProject() {
       description: 'Place virtual objects in a real-world environment.',
       icon: <HiOutlineMap className="h-12 w-12 text-indigo-500" />,
     },
+    {
+      type: 'nft_creation',
+      title: 'NFT',
+      description: 'Create a full ERC-721 project on Polygon.',
+      icon: <HiOutlineMap className="h-12 w-12 text-indigo-500" />,
+    },
   ];
 
   return (
