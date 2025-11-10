@@ -15,7 +15,7 @@ interface ProjectModalProps {
 
 export default function ProjectModal({ project, onClose, onPublishToggle }: ProjectModalProps) {
   const [isPublishing, setIsPublishing] = useState(false);
-  const shareUrl = `https://art-web.netlify.app/p/${project.id}`;
+  const shareUrl = `https://art-emerged-web.netlify.app//p/${project.id}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
   const isPublished = project.status === 'published';
 

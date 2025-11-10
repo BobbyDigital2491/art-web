@@ -1,11 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-html-link-for-pages */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/app/lib/supabase/client';
 import Image from 'next/image';
+import * as THREE from 'three';
 
 export default function ARScene() {
   const { projectId } = useParams();
@@ -42,29 +43,85 @@ export default function ARScene() {
     try {
       const supported = await navigator.xr.isSessionSupported('immersive-ar');
       if (!supported) {
-        alert('AR not supported on this device. Try iPhone or Android.');
+        alert('AR not supported on this device.');
         return;
       }
 
       const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay', 'light-estimation'],
-        domOverlay: { root: document.body },
       });
 
-      // SUCCESS — CAMERA OPENED
+      const canvas = document.createElement('canvas');
+      document.body.appendChild(canvas);
+      const gl = canvas.getContext('webgl2', { xrCompatible: true })!;
+      const renderer = new THREE.WebGLRenderer({ canvas, context: gl, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera();
+      camera.matrixAutoUpdate = false;
+
+      session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+      // Lighting
+      const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+      scene.add(light);
+
+      // 3D Object
+      const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+      const material = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+      const cube = new THREE.Mesh(geometry, material);
+      cube.visible = false;
+      scene.add(cube);
+
+      const referenceSpace = await session.requestReferenceSpace('viewer');
+      const hitTestSourceRequest = await session.requestHitTestSource({ space: referenceSpace });
+      const hitTestSource = hitTestSourceRequest; // Guaranteed to exist
+
+      const onXRFrame = (time: number, frame: XRFrame) => {
+        const pose = frame.getViewerPose(referenceSpace);
+        if (pose) {
+          const glLayer = session.renderState.baseLayer!;
+          gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
+          renderer.setSize(glLayer.framebufferWidth, glLayer.framebufferHeight);
+          renderer.clear();
+
+          for (const view of pose.views) {
+            const viewport = glLayer.getViewport(view);
+            if (viewport) {
+              renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+            }
+            camera.projectionMatrix.fromArray(view.projectionMatrix);
+            const viewMatrix = new THREE.Matrix4().fromArray(view.transform.inverse.matrix);
+            camera.matrixWorld.copy(viewMatrix).invert();
+            renderer.render(scene, camera);
+          }
+        }
+
+        // Image tracking
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        if (hitTestResults.length > 0) {
+          const hitPose = hitTestResults[0].getPose(referenceSpace);
+          if (hitPose) {
+            const poseMatrix = new THREE.Matrix4().fromArray(hitPose.transform.matrix);
+            cube.matrix.copy(poseMatrix);
+            cube.matrix.decompose(cube.position, cube.quaternion, cube.scale);
+            cube.visible = true;
+          }
+        } else {
+          cube.visible = false;
+        }
+
+        session.requestAnimationFrame(onXRFrame);
+      };
+
+      session.requestAnimationFrame(onXRFrame);
+
       document.getElementById('ar-ui')!.style.display = 'none';
       document.getElementById('ar-success')!.style.display = 'flex';
 
-      // Image tracking will go here
-      console.log('AR Session Started:', session);
-
     } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
-        alert('Camera access denied. Go to Settings → Safari → Motion & Orientation Access → ON');
-      } else {
-        alert('AR failed: ' + err.message);
-      }
+      alert('AR failed: ' + err.message);
     }
   };
 
@@ -95,8 +152,8 @@ export default function ARScene() {
       {/* UI */}
       <div id="ar-ui" className="absolute inset-0 flex items-center justify-center z-10">
         <div className="bg-white/95 backdrop-blur-lg px-12 py-10 rounded-3xl shadow-3xl text-center max-w-lg">
-          <h3 className="text-4xl font-bold text-gray-900 mb-6">AR Experience Ready</h3>
-          <p className="text-xl text-gray-700 mb-8">Tap below to open camera</p>
+          <h3 className="text-4xl font-bold text-gray-900 mb-6">Congratulations</h3>
+          <p className="text-xl text-gray-700 mb-8">Your AR Experience is Ready</p>
           <button
             onClick={startAR}
             className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-3xl px-16 py-8 rounded-3xl transition transform hover:scale-110 shadow-3xl"
@@ -114,13 +171,16 @@ export default function ARScene() {
             <p className="text-lg text-gray-600 mt-4 font-medium">Project: {project.project_name}</p>
           </div>
           <p className="text-sm text-gray-500 mt-6">
-            iPhone: Safari → Settings → Motion & Orientation Access → ON
+            Coming Soon
+          </p>
+          <p className="text-sm text-gray-500 mt-6">
+            Works on iPhone (Safari) • Android (Chrome)
           </p>
         </div>
       </div>
 
       {/* Success */}
-      <div id="ar-success" className=" absolute inset-0 flex items-center justify-center bg-black/90">
+      <div id="ar-success" className="hidden absolute inset-0 items-center justify-center bg-black/90">
         <div className="text-center">
           <p className="text-5xl font-bold text-green-400 mb-6 animate-pulse">AR Camera Active!</p>
           <p className="text-3xl text-white">Point at any surface</p>
