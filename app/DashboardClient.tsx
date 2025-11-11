@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,17 +14,42 @@ import { supabase } from './lib/supabase/client';
 
 interface DashboardClientProps {
   initialProjects: Project[];
-  user: any;
 }
 
-export default function DashboardClient({ initialProjects, user }: DashboardClientProps) {
+export default function DashboardClient({ initialProjects }: DashboardClientProps) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+
+  // Fetch user + profile from profiles table
+  useEffect(() => {
+    const fetchUserAndProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setUser(user);
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name, profile_picture, bio')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      }
+    };
+
+    fetchUserAndProfile();
+  }, []);
 
   // Real-time updates
   useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
       .channel('projects-changes')
       .on(
@@ -49,7 +75,7 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user.id]);
+  }, [user?.id]);
 
   const handlePublishToggle = async (projectId: string, published: boolean) => {
     setIsLoading(true);
@@ -71,7 +97,9 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
   const totalScans = projects.reduce((sum, p) => sum + (p.scans || 0), 0);
   const publishedCount = projects.filter(p => p.status === 'published').length;
 
-  const displayName = user.display_name || user.email?.split('@')[0] || 'User';
+  // FIXED: Use profile from profiles table
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
+  const profilePic = profile?.profile_picture || '/default-avatar.png';
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
@@ -83,7 +111,7 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
           <div className="px-8 py-6 flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">
-                Welcome back, <span className="text-purple-600">{displayName}</span>!
+                Welcome back <span className="text-yellow-400">{displayName}</span>
               </h1>
               <p className="text-xl text-gray-600 mt-2">
                 {publishedCount} published • {totalProjects - publishedCount} in draft
@@ -94,21 +122,25 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-700">{displayName}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
+              <Link href="/profile">
               <div className="relative">
+                
                 <Image
-                  src={user.profile_picture || '/default-avatar.png'}
+                  src={profilePic}
                   alt="Profile"
                   width={80}
                   height={80}
-                  className="rounded-full ring-4 ring-purple-200 shadow-xl hover:ring-purple-400 transition"
+                  className="rounded-full ring-4 ring-yellow-200 shadow-xl hover:ring-yellow-400 transition"
                   unoptimized
                 />
-                {user.status === 'online' && (
+                {user && (
                   <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-4 border-white"></div>
                 )}
+                
               </div>
+              </Link>
             </div>
           </div>
         </header>
@@ -118,7 +150,7 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
           <div className="max-w-7xl mx-auto">
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
               <div className="bg-white rounded-3xl shadow-2xl p-10 hover:scale-105 transition">
                 <div className="flex items-center justify-between">
                   <div>
@@ -134,7 +166,11 @@ export default function DashboardClient({ initialProjects, user }: DashboardClie
                     <p className="text-gray-600 text-xl">Published</p>
                     <p className="text-6xl font-bold text-green-600 mt-4">{publishedCount}</p>
                   </div>
-                  
+                  <div className="bg-green-100 p-6 rounded-full">
+                    <svg className="h-12 w-12 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                 </div>
               </div>
               <div className="bg-white rounded-3xl shadow-2xl p-10 hover:scale-105 transition">

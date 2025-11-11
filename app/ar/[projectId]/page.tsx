@@ -141,7 +141,7 @@ export default function ARScene() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center bg-white p-10 rounded-3xl shadow-2xl">
-          <p className="text-2xl text-red-600 font-bold mb-4">{error || 'Project not found'}</p>
+          <p className="text-2xl text-red-600 font-bold mb-4">{error || 'Project not published'}</p>
           <a href="/" className="text-indigo-600 hover:underline text-lg">Back to Dashboard</a>
         </div>
       </div>

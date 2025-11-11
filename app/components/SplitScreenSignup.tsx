@@ -1,14 +1,10 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
+
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import Image from 'next/image';
 
 const SplitScreenSignup = () => {
   const [email, setEmail] = useState('');
@@ -16,7 +12,6 @@ const SplitScreenSignup = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -74,17 +69,28 @@ const SplitScreenSignup = () => {
     <div className="flex min-h-screen w-full relative">
       {/* Left Side: Image */}
       <div className="md:w-1/2 relative max-md:hidden">
-        <img
-          src={
-            imageError
-              ? 'https://images.unsplash.com/photo-1565301660306-29e08751cc53?ixlib=rb-1.2.1&auto=format&fit=crop&w=687&q=80'
-              : 'https://peach-informal-llama-875.mypinata.cloud/ipfs/bafybeigzf6vg6cjkv4e52czwgacp26ntvhm2qb7u7r3xbrhinxavgd3qou'
-          }
-          alt="leftSideImage"
-          className="h-full w-full object-cover"
-          style={{ display: 'block' }}
-          onError={() => setImageError(true)}
+        <Image
+          src="https://peach-informal-llama-875.mypinata.cloud/ipfs/bafybeigzf6vg6cjkv4e52czwgacp26ntvhm2qb7u7r3xbrhinxavgd3qou"
+          alt="AR Emerged"
+          fill
+          className="object-cover"
+          priority
+          unoptimized
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1565301660306-29e08751cc53?ixlib=rb-1.2.1&auto=format&fit=crop&w=687&q=80';
+          }}
         />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-pink-900/70 to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center p-12">
+          <div className="text-white text-center max-w-2xl">
+            <h1 className="text-7xl font-bold mb-6 tracking-tight drop-shadow-2xl">
+              ARt Emerged
+            </h1>
+            <p className="text-3xl font-light leading-relaxed drop-shadow-lg">
+              Create immersive AR experiences in minutes. No code. No limits.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Right Side: Form */}
@@ -104,9 +110,11 @@ const SplitScreenSignup = () => {
             onClick={handleGoogleSignup}
             disabled={loading}
           >
-            <img
+            <Image
               src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/login/googleLogo.svg"
-              alt="googleLogo"
+              alt="Google"
+              width={24}
+              height={24}
               className="h-6"
             />
           </button>
