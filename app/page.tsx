@@ -20,5 +20,5 @@ export default async function HomePage() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
-  return <DashboardClient initialProjects={projects || []} user={user} />;
+  return <DashboardClient initialProjects={projects || []} />;
 }
