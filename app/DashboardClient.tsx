@@ -98,7 +98,7 @@ export default function DashboardClient({ initialProjects }: DashboardClientProp
   const publishedCount = projects.filter(p => p.status === 'published').length;
 
   // FIXED: Use profile from profiles table
-  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
   const profilePic = profile?.profile_picture || '/default-avatar.png';
 
   return (

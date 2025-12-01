@@ -24,7 +24,7 @@ export default function ARScene() {
         .single();
 
       if (error || !data) {
-        setError('Project not found or not published');
+        setError('Project not published');
       } else {
         setProject(data);
       }
