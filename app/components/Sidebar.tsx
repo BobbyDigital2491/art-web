@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { HiArrowSmLeft, HiArrowSmRight, HiHome, HiFolder, HiUser, HiArrowSmRight as HiLogout, HiVideoCamera, HiCube } from 'react-icons/hi';
+import { HiArrowSmLeft, HiArrowSmRight, HiHome, HiFolder, HiUser, HiArrowSmRight as HiLogout, HiVideoCamera} from 'react-icons/hi';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -69,22 +69,7 @@ const Sidebar = ({ onToggle }: { onToggle: (collapsed: boolean) => void }) => {
         </div>
       ),
     },
-    { 
-      name: '3D Scene Editor', 
-      icon: <HiCube className="h-6 w-6 text-yellow-700" />, 
-      isDrawer: true,
-      drawerContent: (
-        <div className="p-4">
-          <h3 className="text-lg font-semibold text-white mb-2">3D Scene Editor</h3>
-          <Link
-            href="/3d-scene-editor"
-            className="block text-white hover:text-gray-200 p-2 rounded-md"
-          >
-            Open 3D Scene Editor
-          </Link>
-        </div>
-      ),
-    },
+    
     { name: 'Profile', icon: <HiUser className="h-6 w-6 text-yellow-700" />, href: '/profile', isDrawer: false },
     { name: 'Logout', icon: <HiLogout className="h-6 w-6 text-yellow-700" />, isDrawer: false, onClick: handleLogout },
   ];
